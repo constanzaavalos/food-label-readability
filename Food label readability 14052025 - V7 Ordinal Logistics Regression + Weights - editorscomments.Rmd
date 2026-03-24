@@ -1,0 +1,1880 @@
+---
+title: "Food label readability - Cross-sectional analysis 12112024"
+author: "Constanza Avalos"
+date: "2024-11-12"
+output: 
+  pdf_document:
+    latex_engine: xelatex
+    toc: yes
+  word_document:
+    toc: yes
+  html_document:
+    theme: cerulean
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+## Clear cache
+
+```{r cache}
+
+# Clear the R package cache by removing the temporary directory
+unlink(tempdir(), recursive = TRUE)
+
+# Optionally, clear the .Rhistory file if needed
+if (file.exists(".Rhistory")) {
+  file.remove(".Rhistory")
+}
+
+# Clear the workspace
+rm(list = ls())
+
+```
+
+## Introduction
+
++This study examines cross-sectional relationships between perceived multiple traffic light (MTL) legibility and self-reported processed food consumption frequency in the UK. 
+
+## Importing data sets
+
+Food and You Survey 2010-2018
+
+```{r data}
+#Load all necessary libraries
+library(tidyverse) # Modern data science library
+library(plm) # Panel data analysis library
+library(car) # Companion to applied regression
+library(gplots) # Various programing tools for plotting data
+library(tseries) # For timeseries analysis
+library(lmtest) # For hetoroskedasticity analysis
+library(readr)
+library(texreg)
+library(ordinal)
+library(VGAM)
+library(survey)
+#tinytex::install_tinytex()
+
+df_full5waves <- read_csv("C:/Users/const/OneDrive/Desktop/PhD/Papers and Reports/Paper 2nd/4. Dataset/foodandyou-w1_5combined_FSA_Correctedseeking.csv")
+
+ndns_data5_6 <- read_tsv("C:/Users/cavalos/OneDrive - The Alan Turing Institute/Desktop/PhD CAV/Paper 2/Data set NDNS/ndns_rp_yr5-6a_foodleveldietarydata_v2.tab")
+
+ndns_data7_8 <- read_tsv("C:/Users/cavalos/OneDrive - The Alan Turing Institute/Desktop/PhD CAV/Paper 2/Data set NDNS/ndns_rp_yr7-8a_foodleveldietarydata.tab")
+
+ndns_data9 <- read_tsv("C:/Users/cavalos/OneDrive - The Alan Turing Institute/Desktop/PhD CAV/Paper 2/Data set NDNS/ndns_rp_yr9a_foodleveldietarydata_uk_20210831.tab")
+
+ndns_data10 <- read_tsv("C:/Users/cavalos/OneDrive - The Alan Turing Institute/Desktop/PhD CAV/Paper 2/Data set NDNS/ndns_rp_yr10a_foodleveldietarydata_uk_20210831.tab")
+
+ndns_data11 <- read_tsv("C:/Users/cavalos/OneDrive - The Alan Turing Institute/Desktop/PhD CAV/Paper 2/Data set NDNS/ndns_rp_yr11a_foodleveldietarydata_uk_20210831.tab")
+
+ndns_dataind5_6 <- read_tsv("C:/Users/cavalos/OneDrive - The Alan Turing Institute/Desktop/PhD CAV/Paper 2/Data set NDNS/ndns_rp_yr5-6a_indiv.tab")
+
+ndns_dataind7_8 <- read_tsv("C:/Users/cavalos/OneDrive - The Alan Turing Institute/Desktop/PhD CAV/Paper 2/Data set NDNS/ndns_rp_yr7-8a_indiv.tab")
+
+ndns_dataind9_11 <- read_tsv("C:/Users/cavalos/OneDrive - The Alan Turing Institute/Desktop/PhD CAV/Paper 2/Data set NDNS/ndns_rp_yr9_11a_indiv_20211020.tab")
+
+```
+
+
+## Checking data set FSA including survey weights
+
+
+Age_Banded: 8 bands
+
+5	16-17
+6	18-19
+7	20-24
+8	25-34
+9	35-44
+10	45-54
+11	55-64
+12	65+
+  
+Age_dv: 7 bands
+
+1	16-24
+2	25-34
+3	35-44
+4	45-54
+5	55-64
+6	65-74
+7	75+
+
+5, 6 and 7 = 1 in Age_dv
+8 = 2
+9 = 3
+10 = 4
+11 = 5
+12 = 11 and 12 Age_dv
+
+
+```{r table4, echo=FALSE}
+
+#COMPARABLE VARIABLES
+
+#table(df_full5waves$RespSex, df_full5waves$surveyyear) #Comparable
+#table(df_full5waves$age_dv, df_full5waves$surveyyear) # comparable
+#table(df_full5waves$Age_Banded, df_full5waves$surveyyear) # comparable
+#table(df_full5waves$below16, df_full5waves$surveyyear) # comparable
+#table(df_full5waves$bhhsize, df_full5waves$surveyyear) # comparable
+#table(df_full5waves$hhdinc, df_full5waves$surveyyear) # partially comparable recode
+#table(df_full5waves$marstat2, df_full5waves$surveyyear) # comparable
+#table(df_full5waves$Religion_DV, df_full5waves$surveyyear) # comparable
+#table(df_full5waves$UrbanRuralInd, df_full5waves$surveyyear) # comparable
+#table(df_full5waves$Country_DV, df_full5waves$surveyyear) # comparable
+#table(df_full5waves$Q3_1, df_full5waves$surveyyear) # comparable responsability
+#table(df_full5waves$Region_DV, df_full5waves$surveyyear) # comparable
+
+#DEPENDANT VARIABLES
+#table(df_full5waves$Q2_14s15_DV, df_full5waves$surveyyear) # comparable Consumption freq sandwich
+#table(df_full5waves$Q2_14su7_DV, df_full5waves$surveyyear) # comparable Consumption freq diary
+#table(df_full5waves$Q2_14su6_DV, df_full5waves$surveyyear) # comparable Consumption freq meat
+
+#Label readability
+#table(df_full5waves$Q6_4, df_full5waves$surveyyear) # comparable responsability
+
+#INTERACTION VARIABLES
+#table(df_full5waves$Q11_8b22, df_full5waves$surveyyear) # comparable get info on cooking safely, product packaging
+#table(df_full5waves$Q11_8b25, df_full5waves$surveyyear) # comparable get info on cooking safely, dont seek 1=mentioned
+#table(df_full5waves$Q4_27_6_Slice, df_full5waves$surveyyear) # comparable, worry about the food I have is safe to eat
+#table(df_full5waves$bpoison, df_full5waves$surveyyear) # comparable
+#table(df_full5waves$dietary, df_full5waves$surveyyear) # comparable few cases vegetarian/vegan
+#table(df_full5waves$fdreac_dv, df_full5waves$surveyyear) # no comparable few cases avoid certain food
+
+# Recode the variables 5 waves data set products
+df_full5waves$Q2_14s15_DV[df_full5waves$Q2_14s15_dv %in% c(-1, 98, 9)] <- NA
+df_full5waves$Q2_14su6_DV[df_full5waves$Q2_14su6_dv %in% c(-1, 98, 9)] <- NA
+df_full5waves$Q2_14su6_DV[df_full5waves$Q2_14su7_DV %in% c(-1, 98, 9)] <- NA
+df_full5waves$Q2_14su6_DV[df_full5waves$Q2_14sub_DV %in% c(-1, 98, 9)] <- NA
+
+# Recode the variables 5 waves data set covariates
+df_full5waves$bhhsize[df_full5waves$bhhsize == 5] <- 4 #recode own family size
+df_full5waves$Age_Banded[df_full5waves$Age_Banded %in%c(5, 6, 7)] <- 1 #recode age
+df_full5waves$age_dv[df_full5waves$age_dv %in%c(6, 7)] <- 6 #recode age
+df_full5waves$Age_Banded[df_full5waves$Age_Banded == 8] <- 2 #recode age 
+df_full5waves$Age_Banded[df_full5waves$Age_Banded == 9] <- 3 #recode age
+df_full5waves$Age_Banded[df_full5waves$Age_Banded == 10] <- 4 #recode age
+df_full5waves$Age_Banded[df_full5waves$Age_Banded == 11] <- 5 #recode age
+df_full5waves$Age_Banded[df_full5waves$Age_Banded == 12] <- 6 #recode age
+df_full5waves$age <- ifelse(!is.na(df_full5waves$age_dv) & df_full5waves$age_dv > 0, df_full5waves$age_dv,
+                 ifelse(!is.na(df_full5waves$Age_Banded) & df_full5waves$Age_Banded > 0, df_full5waves$Age_Banded, NA))
+table(df_full5waves$age, df_full5waves$surveyyear)
+df_full5waves$Q3_1 <- as.numeric(as.character(df_full5waves$Q3_1))
+df_full5waves <- df_full5waves %>%  
+  mutate(Q3_1 = case_when(  
+    Q3_1 %in% c(2, 3, 4, 5) ~ 2,#less than a half or nothing
+    Q3_1 %in% c(1) ~ 1, 
+    TRUE ~ NA_real_  
+  )) 
+table(df_full5waves$Q3_1, df_full5waves$surveyyear)
+
+
+library(dplyr)
+
+df_full5waves <- df_full5waves %>%  
+  mutate(consumption_sandwich = case_when(  
+    Q2_14s15_DV %in% c(1, 2, 3, 4) ~ 3,  #daily or weekly
+    Q2_14s15_DV %in% c(5, 6, 7) ~ 2,  # monthly
+    Q2_14s15_DV %in% c(8) ~ 1,  # never
+    TRUE ~ NA_real_  
+  )) 
+
+df_full5waves <- df_full5waves %>%  
+  mutate(consumption_precookedmeat = case_when(  
+    Q2_14su6_DV %in% c(1, 2, 3,4) ~ 3, #daily and weekly 
+    Q2_14su6_DV %in% c(5, 6, 7) ~ 2,  # monthly
+    Q2_14su6_DV %in% c(8) ~ 1,  #never
+    TRUE ~ NA_real_  
+  )) 
+
+df_full5waves <- df_full5waves %>%  
+  mutate(consumption_sandwich_binary = case_when(  
+    Q2_14s15_DV %in% c(1, 2, 3, 4, 5, 6, 7) ~ 1,  #daily or weekly
+    Q2_14s15_DV %in% c(8) ~ 0,  # never
+    TRUE ~ NA_real_  
+  )) 
+
+df_full5waves <- df_full5waves %>%  
+  mutate(consumption_precookedmeat_binary = case_when(  
+    Q2_14su6_DV %in% c(1, 2, 3,4, 5, 6, 7) ~ 1, #daily and weekly 
+    Q2_14su6_DV %in% c(8) ~ 0,  #never
+    TRUE ~ NA_real_  
+  )) 
+
+df_full5waves <- df_full5waves %>%  
+  mutate(consumption_diary = case_when(  
+    Q2_14su7_DV %in% c(1, 2, 3, 4) ~ 3,  #daily or weekly
+    Q2_14su7_DV %in% c(5, 6, 7) ~ 2,  # monthly
+    Q2_14su7_DV %in% c(8) ~ 1,  # never
+    TRUE ~ NA_real_  
+  )) 
+
+df_full5waves <- df_full5waves %>%  
+  mutate(consumption_meat = case_when(  
+    Q2_14sub_DV %in% c(1, 2, 3, 4) ~ 3,  #daily or weekly
+    Q2_14sub_DV %in% c(5, 6, 7) ~ 2,  # monthly
+    Q2_14sub_DV %in% c(8) ~ 1,  # never
+    TRUE ~ NA_real_  
+  )) 
+
+table(df_full5waves$consumption_sandwich, df_full5waves$surveyyear)
+table(df_full5waves$consumption_precookedmeat, df_full5waves$surveyyear)
+table(df_full5waves$consumption_diary, df_full5waves$surveyyear)
+table(df_full5waves$consumption_meat, df_full5waves$surveyyear)
+
+
+df_full5waves <- df_full5waves %>%  #antes era 1 very easy to read, ahora es very hard to read
+  mutate(Q6_4 = case_when(  
+    Q6_4 %in% c(5) ~ 1,  
+    Q6_4 %in% c(4) ~ 2,  
+    Q6_4 %in% c(3) ~ 3,  
+    Q6_4 %in% c(2) ~ 4, 
+    Q6_4 %in% c(1) ~ 5,  
+    TRUE ~ NA_real_  
+  )) 
+
+
+
+```
+## Recoding variables consumption frequence FSA df_full 5 waves
+
+```{r table5, echo=FALSE}
+
+library(writexl)
+
+# Define key columns we consider essential  
+key_columns2 <- c("SerialNo", "RespSex", "age", "below16", "bhhsize", "hhdinc", 
+                 "marstat2", "Religion_DV", "UrbanRuralInd", "Country_DV",
+                 "Q3_1", "Region_DV", "surveyyear", "psu_dv", "stratum_dv", 
+                 "combinedW1_4weight", "consumption_precookedmeat", "consumption_sandwich", "consumption_diary","consumption_meat", "consumption_sandwich_binary", "consumption_precookedmeat_binary", 
+                 "Q6_4", "Q11_8b25", "Q4_27_6_Slice")
+
+# Subset the data to include only survey years 2, 3, 4, and 5
+df_subset <- df_full5waves[df_full5waves$surveyyear %in% c(2, 3, 4, 5), key_columns2]
+
+
+# Replace negative values and 98/99 with NA in all columns except SerialNo
+for(col in names(df_subset)) {
+    if(col != "SerialNo") {
+        df_subset[[col]] <- ifelse(df_subset[[col]] < 0 | 
+                                       df_subset[[col]] %in% c(98, 99), 
+                                       NA, 
+                                       df_subset[[col]])
+    }
+}
+
+#COMPARABLE VARIABLES
+
+#table(df_subset$RespSex, df_subset$surveyyear) #Comparable
+#table(df_subset$age, df_subset$surveyyear) # comparable
+#table(df_subset$below16, df_subset$surveyyear) # comparable
+#table(df_subset$bhhsize, df_subset$surveyyear) # comparable
+#table(df_subset$hhdinc, df_subset$surveyyear) # partially comparable recode
+#table(df_subset$marstat2, df_subset$surveyyear) # comparable
+#table(df_subset$religion_dv, df_subset$surveyyear) # comparable
+#table(df_subset$UrbanRuralInd, df_subset$surveyyear) # comparable
+#table(df_subset$country_dv, df_subset$surveyyear) # comparable
+#table(df_subset$Q3_1, df_subset$surveyyear) # comparable responsability
+#table(df_subset$Region_DV, df_subset$surveyyear) # comparable
+
+#DEPENDANT VARIABLES
+#table(df_subset$consumption_sandwich, df_subset$surveyyear) # comparable Consumption freq sandwich
+#table(df_subset$consumption_precookedmeat, df_subset$surveyyear) # comparable Consumption freq meat
+
+#Label readability
+#table(df_subset$Q6_4, df_subset$surveyyear) # comparable responsability
+
+#INTERACTION VARIABLES
+#table(df_subset$Q11_8b22, df_subset$surveyyear) # comparable get info on cooking safely, product packaging
+#table(df_subset$Q11_8b25, df_subset$surveyyear) # comparable get info on cooking safely, dont seek
+#table(df_subset$bpoison, df_subset$surveyyear) # comparable
+
+df_subset$Q4_27_6_Slice[df_subset$Q4_27_6_Slice == 6] <- NA
+#table(df_subset$Q4_27_6_Slice, df_subset$surveyyear) # comparable, worry about the food I have is safe to eat
+
+df_subset <- df_subset %>%
+  mutate(read_level = case_when(
+    Q6_4 <= 2 ~ "read_hard",
+    Q6_4 == 3 ~ "read_medium",
+    Q6_4 > 3  ~ "read_easy"
+  )) %>%
+  # Convert the new column to a factor
+  mutate(read_level = as.factor(read_level))
+
+df_subset <- df_subset %>%
+  mutate(RespSex = case_when(
+    RespSex == 1 ~ 1,  # Male remains 1
+    RespSex == 2 ~ 0   # Female becomes 0
+  ))
+
+df_subset <- df_subset %>%
+  mutate(below16 = case_when(
+    below16 == 1 ~ 1,  # Yes remains 1
+    below16 == 2 ~ 0   # No becomes 0
+  ))
+
+df_subset <- df_subset %>%
+  mutate(marstat2 = case_when(
+    marstat2 == 1 ~ 1,  # Married remains 1
+    marstat2 == 2 ~ 0   # Single becomes 0
+  ))
+
+df_subset <- df_subset %>%
+  mutate(UrbanRuralInd = case_when(
+    UrbanRuralInd == 1 ~ 1,  # Urban remains 1
+    UrbanRuralInd == 2 ~ 0   # Rural becomes 0
+  ))
+
+
+
+#subsets by year
+df_subset2012 <- df_subset[df_subset$surveyyear == 2, ]
+df_subset2014 <- df_subset[df_subset$surveyyear == 3, ]
+df_subset2016 <- df_subset[df_subset$surveyyear == 4, ]
+df_subset2018 <- df_subset[df_subset$surveyyear == 5, ]
+
+
+# Export the data frame to an Excel file
+write_xlsx(df_subset, path = "df_subset.xlsx")
+
+
+```
+## Checking multilinearity
+
+The Variance Inflation Factor (VIF) measures how much the variance of a regression coefficient is inflated due to its correlation with other predictors in the model. Here's a breakdown of your results:
+
+VIF Thresholds: A common rule of thumb is that VIF values:
+
+Below 5 are considered acceptable.
+
+Between 5 and 10 may be a cause for concern.
+
+Above 10 indicate high multicollinearity that should be addressed.
+
+Your Results: The highest VIF value in your model is for the bhhsize variable, at approximately 3.26. All other variables have VIF values well below this, with most being under 2.0.
+
+```{r tableimpu, echo=FALSE}
+
+#VIF test
+
+library(foreign)
+library(MASS)
+library(Hmisc)
+library(reshape2)
+library(ordinal)
+library(VGAM)
+library(brant)
+
+sv1 <- polr(factor(consumption_sandwich) ~ Q6_4 + RespSex + age + below16 + bhhsize + 
+            + hhdinc + marstat2 + Religion_DV + UrbanRuralInd + Q3_1  
+            + Country_DV+ surveyyear, 
+                          data = df_subset, 
+                          Hess = TRUE)
+vif(sv1)
+
+
+
+
+```
+
+## Survey weights
+
+```{r tableweight, echo=FALSE}
+
+#Survey design
+#When incorporating a complex survey design, always use the full dataset. Do not exclude any observations, not even to apply inclusion/exclusion criteria or to remove cases with missing data.
+#we can tell R that we want the final analysis to apply only to a subgroup by creating a subpopulation indicator variable and subsetting the design (not the dataset) based on that variable at a later step.
+#For example, we will subset on those with non-missing data, and we can also subset on those with positive weights.
+
+
+# Complete case and positive weight indicator
+         # (a vector of TRUE and FALSE values)
+         nomiss <- complete.cases(df_subset[, c("SerialNo","RespSex", "age", "below16", "bhhsize",                  "hhdinc", "marstat2", "Religion_DV", "UrbanRuralInd", "Country_DV",
+                 "Q3_1", "Region_DV", "surveyyear", "psu_dv", "stratum_dv", 
+                 "combinedW1_4weight", "consumption_precookedmeat", "consumption_sandwich","consumption_diary", "consumption_meat",  
+                 "Q6_4", "read_level", "Q11_8b25", "Q4_27_6_Slice")]) #CHECK THIS
+         
+# Create year indicators (if they don't exist already)
+df_subset$year2012 <- df_subset$surveyyear == 2
+df_subset$year2014 <- df_subset$surveyyear == 3
+df_subset$year2016 <- df_subset$surveyyear == 4
+df_subset$year2018 <- df_subset$surveyyear == 5
+
+df_subset$hhdinc_group <- ifelse(df_subset$hhdinc %in% c("1", "2"), "Low income",
+                         ifelse(df_subset$hhdinc %in% c("3", "4"), "High income", ""))
+df_subset$lowincome <- df_subset$hhdinc_group == "Low income"
+df_subset$highincome <- df_subset$hhdinc_group == "High income"
+
+df_subset$infono <- df_subset$Q11_8b25 == 1
+df_subset$infoyes <- df_subset$Q11_8b25 == 0
+
+df_subset$eatsafe_group <- ifelse(df_subset$Q4_27_6_Slice %in% c("1", "2"), "High",
+                         ifelse(df_subset$Q4_27_6_Slice %in% c("3", "4", "5"), "Low", ""))
+df_subset$safehigh <- df_subset$eatsafe_group == "High"
+df_subset$safelow <- df_subset$eatsafe_group == "Low"
+
+library(svyVGAM)
+
+options(survey.lonely.psu = "adjust") #specify how variance estimation will be handled in cases where a stratum contains only one PSU
+options(survey.adjust.domain.lonely = TRUE) # specify how variance estimation will be handled in cases where a stratum contains only one PSU. These options “center the stratum at the population mean rather than the stratum mean” and make the same adjustment within subgroup analyses
+
+survey_design <- svydesign(  
+    id = ~psu_dv,  
+    strata = ~stratum_dv,  
+    weights = ~combinedW1_4weight,  
+    data = df_subset,  
+    nest = TRUE  
+) 
+
+#information of clusters and stratas
+survey_design
+summary(survey_design)
+
+#create a design object to be used with analyses of cases with nomiss
+#Filtering out cases with missing values is not actually necessary for the regression analysis itself but will ensure that the descriptive statistics and the regression analysis generalize to the same subpopulation.With survey_design.nomiss, descriptive statistics for all variables and the regression analysis all generalize to those in the population who would have had non-missing values for all the variables had they been sampled.
+#There are 845 unique PSUs (Primary Sampling Units) in your dataset. However, the survey design summary reports 1,002 clusters. This discrepancy is due to the way the survey package in R handles the combination of PSUs and strata, especially when the nest = TRUE argument is used. When nest = TRUE, each PSU is considered within the context of its stratum, so the same PSU number in different strata is treated as a different cluster. This can increase the total number of clusters in the design object.
+survey_design.nomiss <- subset(survey_design, nomiss)
+survey_design.nomiss
+
+#To avoid the problem that all years appear in the regression, create a new version of variable years with missing values at the excluded levels and use fct_drop() to drop the unused levels. This must be done before specifying and subsetting the design so that the new variable is available to the design.
+# Set surveyyear2012 to NA for years 2, 3, 4 (so only 1 remain)
+# Create survey designs for each year
+
+# Create survey designs for each year
+survey_design.2012 <- subset(survey_design.nomiss, year2012)
+survey_design.2014 <- subset(survey_design.nomiss, year2014)
+survey_design.2016 <- subset(survey_design.nomiss, year2016)
+survey_design.2018 <- subset(survey_design.nomiss, year2018)
+
+survey_design.lowincome <- subset(survey_design.nomiss, lowincome)
+survey_design.highincome <- subset(survey_design.nomiss, highincome)
+
+survey_design.infono <- subset(survey_design.nomiss, infono)
+survey_design.infoyes <- subset(survey_design.nomiss, infoyes)
+
+survey_design.safehigh <- subset(survey_design.nomiss, safehigh)
+survey_design.safelow <- subset(survey_design.nomiss, safelow)
+
+#statistics readability
+# Weighted mean, standard deviation, and 95% CI
+cbind(
+ "readMEAN" = svymean(~Q6_4, survey_design.nomiss),
+ "readSD"   = sqrt(svyvar(~Q6_4, survey_design.nomiss)[1]),
+       confint(svymean(~Q6_4, survey_design.nomiss), df=degf(survey_design.nomiss))
+)
+
+
+```
+
+## Ordinal logistic regression FSA df_full 2012-2018 -  no proportional odds weighted Sandwich and precooked meat + general
+
+
+```{r tablegen, echo=FALSE}
+
+
+gen0a <- svy_vglm(
+  consumption_sandwich ~ Q6_4,
+  family = cumulative(parallel = FALSE),
+  design = survey_design.nomiss)
+
+summary(gen0a)
+
+gen1 <- svy_vglm(
+  consumption_sandwich ~ Q6_4 + RespSex + age + Religion_DV + hhdinc_group + UrbanRuralInd + Q3_1  + below16 + Country_DV,
+  family = cumulative(parallel = ~ Religion_DV + Q3_1 + Country_DV),
+  design = survey_design.nomiss)
+
+summary(gen1)
+
+# Show all coefficients in the model  
+print(coef(gen1))  
+
+gen2 <- svy_vglm(
+  consumption_sandwich ~ Q6_4*factor(surveyyear) + RespSex + age + Religion_DV + hhdinc_group + UrbanRuralInd + Q3_1  + below16 + Country_DV,
+  family = cumulative(parallel = ~ Religion_DV + Q3_1 + Country_DV),
+  design = survey_design.nomiss)
+
+summary(gen2)
+
+gen0b <- svy_vglm(
+  consumption_precookedmeat ~ Q6_4,
+  family = cumulative(parallel = FALSE),
+  design = survey_design.nomiss)
+
+summary(gen0b)
+
+gen3 <- svy_vglm(
+  consumption_precookedmeat ~ Q6_4 + RespSex + age + Religion_DV + hhdinc_group + UrbanRuralInd + Q3_1  + below16 + Country_DV,
+  family = cumulative(parallel = ~ Religion_DV + Q3_1 + Country_DV),
+  design = survey_design.nomiss)
+
+summary(gen3)
+
+gen4 <- svy_vglm(
+  consumption_precookedmeat ~ Q6_4*surveyyear + RespSex + age + Religion_DV + hhdinc_group + UrbanRuralInd + Q3_1  + below16 + Country_DV,
+  family = cumulative(parallel = ~ Religion_DV + Q3_1+ Country_DV),
+  design = survey_design.nomiss)
+
+summary(gen4)
+
+```
+
+## Brant test
+
+The Brant test checks the proportional odds assumption (also called the parallel regression assumption). This assumption is crucial for ordinal logistic regression. It implies that the effect of each predictor variable is the same across all cumulative splits of your ordinal outcome variable (e.g., the effect of age is the same when comparing 'level 1' vs 'levels 2 & 3' as it is when comparing 'levels 1 & 2' vs 'level 3').
+
+The null hypothesis (H0 ) for the Brant test is that the proportional odds assumption holds. A small p-value (typically < 0.05) provides evidence to reject the null hypothesis, indicating that the assumption is violated.
+
+Variables that VIOLATE the assumption (p < 0.05):
+These variables have an inconsistent effect across the different levels of your outcome variable.
+
+RespSex: p ≈ 0
+
+age: p ≈ 0
+
+hhdinc_groupHigh income: p = 0.00038
+
+UrbanRuralInd: p = 0.00337
+
+surveyyear: p = 0.000029
+
+readability does not violate the parallel assumption as continous o categorical variable
+
+No moy diferente el uno del otro.
+
+```{r brant, echo=FALSE}
+
+library(stargazer)
+library(foreign)
+library(ggplot2)
+library(MASS)
+library(Hmisc)
+library(reshape2)
+library(ordinal)
+library(VGAM)
+library(brant)
+
+sv1 <- polr(factor(consumption_sandwich) ~  Q6_4 + RespSex + age + Religion_DV + hhdinc_group + UrbanRuralInd + Q3_1  + below16 + bhhsize + marstat2 + Country_DV + surveyyear, 
+                          data = df_subset, 
+                          Hess = TRUE)
+summary(sv1)
+
+#The Brant test for the proportional odds assumption should be conducted on an unweighted model because it's not directly compatible with survey-weighted models. 
+brant_results <- brant(sv1)
+print(brant_results)
+
+sv2 <- polr(factor(consumption_precookedmeat) ~  Q6_4 + RespSex + age + Religion_DV + hhdinc_group + UrbanRuralInd + Q3_1  + below16 + bhhsize + marstat2 + Country_DV + surveyyear, 
+                          data = df_subset, 
+                          Hess = TRUE)
+summary(sv2)
+
+#The Brant test for the proportional odds assumption should be conducted on an unweighted model because it's not directly compatible with survey-weighted models. 
+brant_results2 <- brant(sv2)
+print(brant_results2)
+
+sv3 <- polr(factor(consumption_diary) ~  Q6_4 + RespSex + age + Religion_DV + hhdinc_group + UrbanRuralInd + Q3_1 + below16 + bhhsize + marstat2 + Country_DV + surveyyear, 
+                          data = df_subset, 
+                          Hess = TRUE)
+summary(sv3)
+
+#The Brant test for the proportional odds assumption should be conducted on an unweighted model because it's not directly compatible with survey-weighted models. 
+brant_results3 <- brant(sv3)
+print(brant_results3)
+
+sv4 <- polr(factor(consumption_meat) ~  Q6_4 + RespSex + age + Religion_DV + hhdinc_group + UrbanRuralInd + Q3_1  + below16 + bhhsize + marstat2 + Country_DV + surveyyear, 
+                          data = df_subset, 
+                          Hess = TRUE)
+summary(sv4)
+
+#The Brant test for the proportional odds assumption should be conducted on an unweighted model because it's not directly compatible with survey-weighted models. 
+brant_results4 <- brant(sv4)
+print(brant_results4)
+
+
+```
+
+## Ordinal logistic regression FSA df_full 2012-2018 -  no proportional odds weighted Sandwich and precooked meat + readability proportional odd PUBLICATION
+
+```{r reada, echo=FALSE}
+
+
+gen11 <- svy_vglm(
+  consumption_sandwich ~ Q6_4 + RespSex + age + factor(Religion_DV) + hhdinc_group + UrbanRuralInd + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV) + factor(surveyyear),
+  family = cumulative(parallel = ~ Q6_4 + factor(Religion_DV) + hhdinc_group + below16 + marstat2 + factor(Country_DV)),
+  design = survey_design.nomiss
+)
+summary(gen11)
+
+
+gen22 <- svy_vglm(
+  consumption_sandwich ~ Q6_4*factor(surveyyear) + RespSex + age + factor(Religion_DV) + hhdinc_group + UrbanRuralInd + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV),
+  family = cumulative(parallel = ~  Q6_4 + factor(Religion_DV) + hhdinc_group + below16 + marstat2 + factor(Country_DV) + Q6_4*factor(surveyyear)),
+  design = survey_design.nomiss)
+
+summary(gen22)
+
+gen33 <- svy_vglm(consumption_precookedmeat ~ Q6_4 + RespSex + age + factor(Religion_DV) + hhdinc_group + UrbanRuralInd + below16 + bhhsize + marstat2 + Q3_1 + Country_DV + factor(surveyyear),
+  family = cumulative(parallel = ~ Q6_4 + RespSex + age + factor(Religion_DV) + UrbanRuralInd + below16 + marstat2 + Q3_1 + Country_DV),
+  design = survey_design.nomiss)
+
+summary(gen33)
+
+gen44 <- svy_vglm(
+  consumption_precookedmeat ~ Q6_4*factor(surveyyear) + RespSex + age + factor(Religion_DV) + hhdinc_group + UrbanRuralInd + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV),
+  family = cumulative(parallel = ~  Q6_4 + RespSex + age + factor(Religion_DV) + UrbanRuralInd + below16 + marstat2 + Q3_1 + factor(Country_DV) + Q6_4*factor(surveyyear)),
+  design = survey_design.nomiss)
+
+summary(gen44)
+
+
+```
+## Ordinal logistic regression FSA df_full 2012-2018 -  no proportional odds weighted Sandwich and precooked meat + readability proportional odd PLOTs
+
+```{r reada2, echo=FALSE}
+
+# install.packages("ggplot2") # Run this line if you don't have ggplot2 installed
+# install.packages("patchwork") # Run this to arrange plots together
+library(ggplot2)
+library(patchwork)
+
+# ==============================================================================
+# PLOT 1: SANDWICH CONSUMPTION (ODDS RATIOS)
+# ==============================================================================
+
+# --- Step 1a: Define Coefficients from the NEW Sandwich Consumption Model ---
+# (Using exact values from R output)
+b_q6_4_sandwich <- -0.097686
+b_q6_4_yr_2014_sandwich <- 0.061022
+b_q6_4_yr_2016_sandwich <- 0.052750
+b_q6_4_yr_2018_sandwich <- 0.139325
+
+# --- Step 2a: Calculate the Marginal Effect (Log-Odds) for Each Year ---
+effect_yr_2012_sandwich <- b_q6_4_sandwich
+effect_yr_2014_sandwich <- b_q6_4_sandwich + b_q6_4_yr_2014_sandwich
+effect_yr_2016_sandwich <- b_q6_4_sandwich + b_q6_4_yr_2016_sandwich
+effect_yr_2018_sandwich <- b_q6_4_sandwich + b_q6_4_yr_2018_sandwich
+
+# --- Step 3a: Create a Data Frame and Convert Effects to Odds Ratios ---
+plot_data_sandwich <- data.frame(
+  Year = c(2012, 2014, 2016, 2018),
+  Effect = c(effect_yr_2012_sandwich, effect_yr_2014_sandwich, effect_yr_2016_sandwich, effect_yr_2018_sandwich)
+)
+plot_data_sandwich$OddsRatio <- exp(plot_data_sandwich$Effect)
+
+# ==============================================================================
+# PLOT 2: PRE-COOKED MEAT CONSUMPTION (ODDS RATIOS)
+# ==============================================================================
+
+# --- Step 1b: Define Coefficients from the NEW Pre-cooked Meat Model ---
+# (Using exact values from R output)
+b_q6_4_meat <- 0.0261802
+b_q6_4_yr_2014_meat <- -0.0319737
+b_q6_4_yr_2016_meat <- -0.0748803
+b_q6_4_yr_2018_meat <- -0.0191249
+
+# --- Step 2b: Calculate the Marginal Effect (Log-Odds) for Each Year ---
+effect_yr_2012_meat <- b_q6_4_meat
+effect_yr_2014_meat <- b_q6_4_meat + b_q6_4_yr_2014_meat
+effect_yr_2016_meat <- b_q6_4_meat + b_q6_4_yr_2016_meat
+effect_yr_2018_meat <- b_q6_4_meat + b_q6_4_yr_2018_meat
+
+# --- Step 3b: Create a Data Frame and Convert Effects to Odds Ratios ---
+plot_data_meat <- data.frame(
+  Year = c(2012, 2014, 2016, 2018),
+  Effect = c(effect_yr_2012_meat, effect_yr_2014_meat, effect_yr_2016_meat, effect_yr_2018_meat)
+)
+plot_data_meat$OddsRatio <- exp(plot_data_meat$Effect)
+
+# ==============================================================================
+# PLOT 3: DAIRY (NEDV) (ODDS RATIOS)
+# ==============================================================================
+
+# --- Step 1c: Define Coefficients from the NEW Dairy Model ---
+# (Using exact values from R output)
+b_q6_4_diary <- -0.0700570
+b_q6_4_yr_2014_diary <- 0.0365404
+b_q6_4_yr_2016_diary <- 0.1027693
+b_q6_4_yr_2018_diary <- 0.1347710
+
+# --- Step 2c: Calculate the Marginal Effect (Log-Odds) for Each Year ---
+effect_yr_2012_diary <- b_q6_4_diary
+effect_yr_2014_diary <- b_q6_4_diary + b_q6_4_yr_2014_diary
+effect_yr_2016_diary <- b_q6_4_diary + b_q6_4_yr_2016_diary
+effect_yr_2018_diary <- b_q6_4_diary + b_q6_4_yr_2018_diary
+
+# --- Step 3c: Create a Data Frame and Convert Effects to Odds Ratios ---
+plot_data_diary <- data.frame(
+  Year = c(2012, 2014, 2016, 2018),
+  Effect = c(effect_yr_2012_diary, effect_yr_2014_diary, effect_yr_2016_diary, effect_yr_2018_diary)
+)
+plot_data_diary$OddsRatio <- exp(plot_data_diary$Effect)
+
+# ==============================================================================
+# PLOT 4: FRESH MEAT (NEDV) (ODDS RATIOS)
+# ==============================================================================
+
+# --- Step 1d: Define Coefficients from the NEW Fresh Meat Model ---
+# (Using exact values from R output)
+b_q6_4_fresh_meat <- 0.0464171
+b_q6_4_yr_2014_fresh_meat <- -0.0811353
+b_q6_4_yr_2016_fresh_meat <- -0.0279599
+b_q6_4_yr_2018_fresh_meat <- 0.0029789
+
+# --- Step 2d: Calculate the Marginal Effect (Log-Odds) for Each Year ---
+effect_yr_2012_fresh_meat <- b_q6_4_fresh_meat
+effect_yr_2014_fresh_meat <- b_q6_4_fresh_meat + b_q6_4_yr_2014_fresh_meat
+effect_yr_2016_fresh_meat <- b_q6_4_fresh_meat + b_q6_4_yr_2016_fresh_meat
+effect_yr_2018_fresh_meat <- b_q6_4_fresh_meat + b_q6_4_yr_2018_fresh_meat
+
+# --- Step 3d: Create a Data Frame and Convert Effects to Odds Ratios ---
+plot_data_fresh_meat <- data.frame(
+  Year = c(2012, 2014, 2016, 2018),
+  Effect = c(effect_yr_2012_fresh_meat, effect_yr_2014_fresh_meat, effect_yr_2016_fresh_meat, effect_yr_2018_fresh_meat)
+)
+plot_data_fresh_meat$OddsRatio <- exp(plot_data_fresh_meat$Effect)
+
+# ==============================================================================
+# PLOTTING
+# ==============================================================================
+
+# --- Step 4: Set a common Y-axis scale for ALL FOUR plots ---
+min_or <- min(plot_data_sandwich$OddsRatio, plot_data_meat$OddsRatio, 
+              plot_data_diary$OddsRatio, plot_data_fresh_meat$OddsRatio)
+max_or <- max(plot_data_sandwich$OddsRatio, plot_data_meat$OddsRatio, 
+              plot_data_diary$OddsRatio, plot_data_fresh_meat$OddsRatio)
+# Add a little padding
+y_axis_limits <- c(floor(min_or * 10) / 10, ceiling(max_or * 10) / 10)
+
+
+# --- Step 5a: Create the Greyscale Plot (Sandwich) ---
+plot_sandwich <- ggplot(plot_data_sandwich, aes(x = Year, y = OddsRatio)) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "gray50") +
+  geom_line(aes(group = 1), color = "black", size = 1) +
+  geom_point(color = "black", size = 4) +
+  scale_y_continuous(limits = y_axis_limits) +
+  scale_x_continuous(breaks = c(2012, 2014, 2016, 2018)) +
+  labs(
+    title = "A) Pre-package sandwich",
+    subtitle = "(Labeled)",
+    x = "Year",
+    y = "Odds Ratio"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    panel.grid.minor = element_blank()
+  )
+
+# --- Step 5b: Create the Greyscale Plot (Meat) ---
+plot_meat <- ggplot(plot_data_meat, aes(x = Year, y = OddsRatio)) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "gray50") +
+  geom_line(aes(group = 1), color = "black", size = 1) +
+  geom_point(color = "black", size = 4) +
+  scale_y_continuous(limits = y_axis_limits) +
+  scale_x_continuous(breaks = c(2012, 2014, 2016, 2018)) +
+  labs(
+    title = "B) Pre-cooked Meat",
+    subtitle = "(Labeled)",
+    x = "Year",
+    y = "Odds Ratio"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    panel.grid.minor = element_blank()
+  )
+
+# --- Step 5c: Create the Greyscale Plot (Diary) ---
+plot_diary <- ggplot(plot_data_diary, aes(x = Year, y = OddsRatio)) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "gray50") +
+  geom_line(aes(group = 1), color = "black", size = 1) +
+  geom_point(color = "black", size = 4) +
+  scale_y_continuous(limits = y_axis_limits) +
+  scale_x_continuous(breaks = c(2012, 2014, 2016, 2018)) +
+  labs(
+    title = "C) Dairy",
+    subtitle = "(Labeled)",
+    x = "Year",
+    y = "Odds Ratio"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    panel.grid.minor = element_blank()
+  )
+
+# --- Step 5d: Create the Greyscale Plot (Fresh Meat) ---
+plot_fresh_meat <- ggplot(plot_data_fresh_meat, aes(x = Year, y = OddsRatio)) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "gray50") +
+  geom_line(aes(group = 1), color = "black", size = 1) +
+  geom_point(color = "black", size = 4) +
+  scale_y_continuous(limits = y_axis_limits) +
+  scale_x_continuous(breaks = c(2012, 2014, 2016, 2018)) +
+  labs(
+    title = "D) Fresh Meat",
+    subtitle = "(No Label)",
+    x = "Year",
+    y = "Odds Ratio"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    panel.grid.minor = element_blank()
+  )
+
+# --- Step 6: Combine plots into a 2x2 grid and export ---
+# (plot1 + plot2) is the top row, (plot3 + plot4) is the bottom row
+combined_plot <- (plot_sandwich + plot_meat) / (plot_diary + plot_fresh_meat)
+
+print(combined_plot)
+
+# Save as a square plot (12 width, 12 height)
+ggsave("interaction_plots_2x2_updated.png", combined_plot, width = 12, height = 12, dpi = 300)
+
+
+```
+
+## Ordinal logistic regression FSA df_full 2012-2018 -  no proportional odds weighted Sandwich and precooked meat + Income groups
+
+I need to impute the values
+
+```{r table16, echo=FALSE}
+
+inc1 <- svy_vglm(
+  consumption_sandwich ~ Q6_4*factor(surveyyear) + 
+    RespSex + age + Religion_DV + UrbanRuralInd + Q3_1 + 
+    below16 + Country_DV,
+  family = cumulative(parallel = ~ Q6_4 + Religion_DV + hhdinc_group + below16 + Country_DV+Q6_4*factor(surveyyear)),
+  design = survey_design.lowincome)
+
+summary(inc1)
+
+
+inc2 <- svy_vglm(consumption_sandwich ~ Q6_4*factor(surveyyear) + 
+    RespSex + age + Religion_DV + UrbanRuralInd + Q3_1 + 
+    below16 + Country_DV,
+  family = cumulative(parallel = ~ Religion_DV + Q3_1 + Country_DV+Q6_4*factor(surveyyear)),
+  design = survey_design.highincome)
+
+summary(inc2)
+
+inc4 <- svy_vglm(consumption_precookedmeat ~ Q6_4*factor(surveyyear)+ 
+    RespSex + age + Religion_DV + UrbanRuralInd + Q3_1 + 
+    below16 + Country_DV,
+  family = cumulative(parallel = ~ Religion_DV + Q3_1 + Country_DV+Q6_4*factor(surveyyear)),
+  design = survey_design.lowincome)
+
+summary(inc4)
+
+inc5 <- svy_vglm(consumption_precookedmeat ~ Q6_4*factor(surveyyear)+ 
+    RespSex + age + Religion_DV + UrbanRuralInd + Q3_1 + 
+    below16 + Country_DV,
+  family = cumulative(parallel = ~ Religion_DV + Q3_1 + Country_DV+Q6_4*factor(surveyyear)),
+  design = survey_design.highincome)
+
+summary(inc5)
+
+```
+
+## Ordinal logistic regression FSA df_full 2012-2018 -  no proportional odds weighted Sandwich and precooked meat + info seeking
+
+I need to impute the values
+
+```{r table18, echo=FALSE}
+
+inc11 <- svy_vglm(
+  consumption_sandwich ~ Q6_4*factor(surveyyear) + RespSex + age + factor(Religion_DV) + hhdinc_group + UrbanRuralInd + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV),
+  family = cumulative(parallel =  TRUE),
+  design = survey_design.infono)
+
+summary(inc11)
+
+
+inc12 <- svy_vglm(
+  consumption_sandwich ~ Q6_4*factor(surveyyear) + RespSex + age + factor(Religion_DV) + hhdinc_group + factor(UrbanRuralInd) + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV),
+  family = cumulative(parallel = TRUE),
+  design = survey_design.infoyes)
+
+summary(inc12)
+
+
+  inc13 <- svy_vglm(
+    consumption_precookedmeat ~ Q6_4*factor(surveyyear) + RespSex + age + factor(Religion_DV) + hhdinc_group + factor(UrbanRuralInd) + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV),
+    family = cumulative(parallel = TRUE),
+    design = survey_design.infono)
+    
+  summary(inc13)
+  
+  inc14 <- svy_vglm(consumption_precookedmeat ~ Q6_4*factor(surveyyear) + RespSex + age + factor(Religion_DV) + hhdinc_group + factor(UrbanRuralInd) + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV),
+    family = cumulative(parallel = TRUE),
+    design = survey_design.infoyes)
+  
+  summary(inc14)
+  
+  
+  inc11a <- svy_vglm(
+  consumption_diary ~ Q6_4*factor(surveyyear) + RespSex + age + factor(Religion_DV) + hhdinc_group + UrbanRuralInd + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV),
+  family = cumulative(parallel = TRUE),
+  design = survey_design.infono)
+
+summary(inc11a)
+
+
+inc12a <- svy_vglm(
+  consumption_diary ~ Q6_4*factor(surveyyear) + RespSex + age + factor(Religion_DV) + hhdinc_group + factor(UrbanRuralInd) + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV),
+  family = cumulative(parallel = TRUE),
+  design = survey_design.infoyes)
+
+summary(inc12a)
+
+
+  inc13a <- svy_vglm(
+    consumption_meat ~ Q6_4*factor(surveyyear) + RespSex + age + factor(Religion_DV) + hhdinc_group + factor(UrbanRuralInd) + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV),
+    family = cumulative(parallel = TRUE),
+    design = survey_design.infono)
+    
+  summary(inc13a)
+  
+  inc14a <- svy_vglm(consumption_meat ~ Q6_4*factor(surveyyear) + RespSex + age + factor(Religion_DV) + hhdinc_group + factor(UrbanRuralInd) + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV),
+    family = cumulative(parallel = TRUE),
+    design = survey_design.infoyes)
+  
+  summary(inc14a)
+  
+  
+
+
+```
+
+## Ordinal logistic regression FSA df_full 2012-2018 -  no proportional odds weighted Sandwich and precooked meat + eat safely
+
+I need to impute the values
+
+```{r table19, echo=FALSE}
+
+# A simpler model that is more likely to run on a subset
+inc15 <- svy_vglm(
+  consumption_sandwich ~ Q6_4*factor(surveyyear) + RespSex + age + factor(Religion_DV) + hhdinc_group + factor(UrbanRuralInd) + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV) + factor(surveyyear),
+  family = cumulative(parallel = ~ Q6_4 + factor(Religion_DV) + hhdinc_group + below16 + marstat2 + factor(Country_DV) + Q6_4*factor(surveyyear)),
+  design = survey_design.safehigh
+)
+
+
+summary(inc15)
+
+inc16 <- svy_vglm(
+  consumption_sandwich ~ Q6_4*factor(surveyyear) + RespSex + age + factor(Religion_DV) + hhdinc_group + factor(UrbanRuralInd) + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV) + factor(surveyyear),
+  family = cumulative(parallel = ~ Q6_4 + factor(Religion_DV) + hhdinc_group + below16 + marstat2 + factor(Country_DV) + Q6_4*factor(surveyyear)),
+  design = survey_design.safelow
+)
+
+summary(inc16)
+
+
+inc18 <- svy_vglm(consumption_precookedmeat ~ Q6_4*factor(surveyyear) + RespSex + age + factor(Religion_DV) + hhdinc_group + factor(UrbanRuralInd) + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV),
+  family = cumulative(parallel = ~  Q6_4 + RespSex + age + factor(Religion_DV) + factor(UrbanRuralInd) + below16 + marstat2 + Q3_1 + factor(Country_DV) + Q6_4*factor(surveyyear)),
+  design = survey_design.safehigh)
+
+summary(inc18)
+
+inc20 <- svy_vglm(consumption_precookedmeat ~ Q6_4*factor(surveyyear) + RespSex + age + factor(Religion_DV) + hhdinc_group + factor(UrbanRuralInd) + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV),
+  family = cumulative(parallel = ~  Q6_4 + RespSex + age + factor(Religion_DV) + factor(UrbanRuralInd) + below16 + marstat2 + Q3_1 + factor(Country_DV) + Q6_4*factor(surveyyear)),
+  design = survey_design.safelow)
+
+summary(inc20)
+
+inc15a <- svy_vglm(
+  consumption_diary ~ Q6_4*factor(surveyyear) + RespSex + age + factor(Religion_DV) + hhdinc_group + factor(UrbanRuralInd) + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV) + factor(surveyyear),
+  family = cumulative(parallel = TRUE),
+  design = survey_design.safehigh
+)
+
+
+summary(inc15a)
+
+inc16a <- svy_vglm(
+  consumption_diary ~ Q6_4*factor(surveyyear) + RespSex + age + factor(Religion_DV) + hhdinc_group + factor(UrbanRuralInd) + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV) + factor(surveyyear),
+  family = cumulative(parallel = TRUE),
+  design = survey_design.safelow
+)
+
+summary(inc16a)
+
+
+inc18a <- svy_vglm(consumption_meat ~ Q6_4*factor(surveyyear) + RespSex + age + factor(Religion_DV) + hhdinc_group + factor(UrbanRuralInd) + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV),
+  family = cumulative(parallel = ~  Q6_4 + RespSex + age + factor(Religion_DV) + factor(UrbanRuralInd) + below16 + marstat2 + Q3_1 + factor(Country_DV) + Q6_4*factor(surveyyear)),
+  design = survey_design.safehigh)
+
+summary(inc18a)
+
+inc20a <- svy_vglm(consumption_meat ~ Q6_4*factor(surveyyear) + RespSex + age + factor(Religion_DV) + hhdinc_group + factor(UrbanRuralInd) + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV),
+  family = cumulative(parallel = TRUE),
+  design = survey_design.safelow)
+
+summary(inc20a)
+
+```
+
+
+## Sociodemographic variables table weighted Sandwich
+
+```{r sociow, echo=FALSE}
+
+
+# Load necessary libraries
+library(survey)
+library(xtable)
+
+# First, ensure the survey design object is created
+# This code assumes 'survey_design.nomiss' already exists from your model script.
+
+# --- 1. MODIFIED HELPER FUNCTION (Outputs Percentages Only) ---
+# This function now handles cases where a consumption level might be missing.
+create_weighted_demo_table <- function(variable, categories, outcome_var) {
+  
+  # The formula now uses the specified outcome variable
+  formula_str <- paste("~", variable, "+", outcome_var)
+  
+  # Ensure the variables exist and have data
+  if (!variable %in% names(survey_design.nomiss$variables) || 
+      !outcome_var %in% names(survey_design.nomiss$variables)) {
+    stop(paste("Variable", variable, "or", outcome_var, "not found in survey design."))
+  }
+  
+  tab <- svytable(as.formula(formula_str), survey_design.nomiss)
+  
+  # Calculate column percentages
+  prop_tab <- prop.table(tab, margin = 2) * 100
+  
+  # --- ROBUSTNESS FIX START ---
+  # Create a placeholder for all possible consumption levels
+  all_consumption_levels <- c("1", "2", "3")
+  
+  # Create a full matrix to store results, ensuring it always has 3 columns
+  # MODIFIED: Placeholder is now "0.0" for percentage only
+  full_result_matrix <- matrix("0.0", nrow = nrow(tab), ncol = length(all_consumption_levels))
+  colnames(full_result_matrix) <- c("Never", "Monthly", "Weekly") # Use desired names
+  
+  # Get the names of the levels that actually exist in the current table
+  existing_levels <- colnames(tab)
+  
+  # Fill the full matrix with data from the existing levels
+  for (i in 1:nrow(tab)) {
+    for (level in existing_levels) {
+      # Find the correct column index in our full matrix
+      col_idx <- which(all_consumption_levels == level)
+      if (length(col_idx) > 0) {
+        # Get the corresponding column from the original table
+        original_col_idx <- which(colnames(tab) == level)
+        
+        # MODIFIED: Format to be percentage only (e.g., "25.1")
+        full_result_matrix[i, col_idx] <- sprintf("%.1f", prop_tab[i, original_col_idx])
+      }
+    }
+  }
+  # --- ROBUSTNESS FIX END ---
+  
+  # Ensure category labels match the number of rows
+  actual_categories <- nrow(tab)
+  if(length(categories) != actual_categories) {
+    categories <- categories[1:actual_categories]
+  }
+  
+  # Convert to a data frame
+  result_df <- as.data.frame(full_result_matrix)
+  
+  # Add the variable and category labels for the final table structure
+  result_df$Category <- categories
+  result_df$Variable <- c(variable, rep("", nrow(result_df)-1))
+  
+  # Reorder columns for the final output
+  result_df <- result_df[, c("Variable", "Category", "Never", "Monthly", "Weekly")]
+  
+  return(result_df)
+}
+
+# --- 2. UNCHANGED FUNCTION DEFINITION ---
+# This function correctly accepts 'outcome_var' and passes it to the helper function.
+create_full_demo_table <- function(outcome_var) {
+  sex_table <- create_weighted_demo_table("RespSex", c("Male", "Female"), outcome_var)
+  age_table <- create_weighted_demo_table("age", c("16-24", "25-34", "35-44", "45-54", "55-64", "65+"), outcome_var)
+  income_table <- create_weighted_demo_table("hhdinc_group", c("Low income", "High income"), outcome_var)
+  size_table <- create_weighted_demo_table("bhhsize", c("1", "2", "3", "4"), outcome_var)
+  marital_table <- create_weighted_demo_table("marstat2", c("Married/Similar", "Single/Similar"), outcome_var)
+  religion_table <- create_weighted_demo_table("Religion_DV", c("Christian", "Other religion", "No religion"), outcome_var)
+  children_table <- create_weighted_demo_table("below16", c("Yes", "No"), outcome_var)
+  responsability_table <- create_weighted_demo_table("Q3_1", c("All/Most", "Sometimes/Never"), outcome_var)
+  area_table <- create_weighted_demo_table("UrbanRuralInd", c("Urban", "Rural"), outcome_var)
+  country_table <- create_weighted_demo_table("Country_DV", c("England", "Wales", "Northern Ireland"), outcome_var)
+  years_table <- create_weighted_demo_table("surveyyear", c("2012", "2014", "2016", "2018"), outcome_var)
+  # Assuming 'eatsafe_group' and 'Q11_8b25' are your variable names.
+  eatsafe_table <- create_weighted_demo_table("eatsafe_group", c("High", "Low"), outcome_var)
+  infoseek_table <- create_weighted_demo_table("Q11_8b25", c("Yes", "No"), outcome_var)
+  
+  full_table <- rbind(sex_table, age_table, income_table, size_table, marital_table, religion_table, children_table, responsability_table, area_table, country_table, years_table, eatsafe_table, infoseek_table)
+  return(full_table)
+}
+
+# ==============================================================================
+# 3. NEW: GET COLUMN N's (The "number for the full table")
+# ==============================================================================
+# This calculates the unweighted N for each consumption level.
+# You will MANUALLY add these numbers to your LaTeX table header.
+
+print("--- UNWEIGHTED COLUMN Ns (Manually add to LaTeX header) ---")
+print(paste("Total N in 'survey_design.nomiss':", nrow(survey_design.nomiss$variables)))
+
+print("--- consumption_sandwich ---")
+print(table(survey_design.nomiss$variables$consumption_sandwich))
+
+print("--- consumption_precookedmeat ---")
+print(table(survey_design.nomiss$variables$consumption_precookedmeat))
+
+print("--- consumption_diary (NEDV) ---")
+print(table(survey_design.nomiss$variables$consumption_diary))
+
+print("--- consumption_meat (NEDV) ---")
+print(table(survey_design.nomiss$variables$consumption_meat))
+
+
+# ==============================================================================
+# 4. MODIFIED: GENERATE AND COMBINE ALL FOUR TABLES
+# ==============================================================================
+
+# --- Generate the four separate tables first ---
+demo_table_sandwich <- create_full_demo_table("consumption_sandwich")
+demo_table_meat <- create_full_demo_table("consumption_precookedmeat")
+demo_table_diary <- create_full_demo_table("consumption_diary")
+demo_table_meat_falsify <- create_full_demo_table("consumption_meat") # NEDV
+
+
+# --- Combine them into a single data frame ---
+# Create the first column with merged Variable/Category
+row_labels_vec <- ifelse(demo_table_sandwich$Variable != "", 
+                         as.character(demo_table_sandwich$Variable), 
+                         paste("  ", demo_table_sandwich$Category)) # Indent categories
+row_labels_df <- data.frame(Category = row_labels_vec)
+
+# MODIFIED: Combine all 4 tables (12 columns)
+combined_data <- cbind(
+  demo_table_sandwich[, c("Never", "Monthly", "Weekly")],
+  demo_table_meat[, c("Never", "Monthly", "Weekly")],
+  demo_table_diary[, c("Never", "Monthly", "Weekly")],
+  demo_table_meat_falsify[, c("Never", "Monthly", "Weekly")]
+)
+
+# Create the final, wide data frame
+final_combined_table <- cbind(row_labels_df, combined_data)
+
+
+# ==============================================================================
+# 5. MODIFIED: Create the LaTeX table with 4-product headers
+# ==============================================================================
+
+print('--- Combined Demographic Table (Percentages Only) ---')
+print(final_combined_table)
+
+# MODIFIED: New 4-product, 12-column header
+header_command <- paste(
+  "\\toprule & \\multicolumn{3}{c}{Pre-package Sandwich} &",
+  "\\multicolumn{3}{c}{Pre-cooked Meat} &",
+  "\\multicolumn{3}{c}{Dairy (NEDV)} &",
+  "\\multicolumn{3}{c}{Fresh Meat (NEDV)} \\\\",
+  "\\cmidrule(lr){2-4} \\cmidrule(lr){5-7} \\cmidrule(lr){8-10} \\cmidrule(lr){11-13}"
+)
+
+# Create the xtable object
+latex_combined_table <- xtable(final_combined_table,
+                               caption = 'Weighted Demographic Characteristics by Consumption Frequency (Percentages Only)',
+                               label = 'tab:demographics_combined_pct')
+
+# MODIFIED: New 13-column names
+names(latex_combined_table) <- c("Category", 
+                                 "Never", "Monthly", "Weekly", 
+                                 "Never", "Monthly", "Weekly", 
+                                 "Never", "Monthly", "Weekly", 
+                                 "Never", "Monthly", "Weekly")
+
+
+# Print the final LaTeX code
+print('--- LaTeX Code for Combined Table (Percentages Only) ---')
+print(latex_combined_table,
+      include.rownames = FALSE,
+      caption.placement = 'top',
+      sanitize.text.function = identity,
+      booktabs = TRUE,
+      add.to.row = list(pos = list(-1), command = header_command),
+      table.placement = "htbp",
+      size = "\\small"
+)
+
+
+
+```
+
+## Readability mean table weighted
+
+```{r table20, echo=FALSE}
+
+
+library(survey)
+library(xtable)
+
+# This code assumes 'survey_design.nomiss' and 'df_subset' exist from your previous scripts.
+# NOTE: This function's logic is from your original file.
+# It calculates Mean (SE) of Q6_4, broken down by a variable AND by year.
+
+# --- 1. Function to create weighted mean (SE) tables ---
+create_weighted_mean_se_table <- function(variable, categories) {
+  # This part of your code assumes 'surveyyear' and 'Q6_4' are in the design
+  
+  years <- c(2, 3, 4, 5) # Assuming these are your year codes
+  year_labels <- c("2012", "2014", "2016", "2018")
+  
+  # Get unique codes for the variable
+  codes <- unique(df_subset[[variable]])
+  codes <- codes[codes != ""] # Remove empty string if present
+  
+  # If categories are named, match codes to categories
+  if(length(categories) != length(codes)) {
+    categories <- categories[1:length(codes)]
+  }
+  
+  result_matrix <- matrix(NA, nrow = length(codes), ncol = length(years))
+  se_matrix <- matrix(NA, nrow = length(codes), ncol = length(years))
+  
+  for(i in seq_along(codes)) {
+    for(j in seq_along(years)) {
+      # Subset for non-missing values
+      subset_design <- subset(survey_design.nomiss, !is.na(get(variable)) & !is.na(Q6_4) & get(variable) == codes[i] & surveyyear == years[j])
+      
+      if (length(subset_design$variables[[1]]) > 0) {
+        mean_result <- svymean(~Q6_4, subset_design, na.rm = TRUE)
+        result_matrix[i, j] <- as.numeric(mean_result)
+        se_matrix[i, j] <- as.numeric(SE(mean_result))
+      } else {
+        result_matrix[i, j] <- NA
+        se_matrix[i, j] <- NA
+      }
+    }
+  }
+  
+  # Combine mean and SE as "mean (SE)"
+  combined_matrix <- matrix(NA, nrow = length(codes), ncol = length(years))
+  for (i in seq_along(codes)) {
+    for (j in seq_along(years)) {
+      if (!is.na(result_matrix[i, j])) {
+        combined_matrix[i, j] <- sprintf("%.2f (%.2f)", result_matrix[i, j], se_matrix[i, j])
+      } else {
+        combined_matrix[i, j] <- NA
+      }
+    }
+  }
+  
+  result_df <- as.data.frame(combined_matrix)
+  colnames(result_df) <- year_labels
+  result_df$Category <- categories
+  result_df$Variable <- c(variable, rep("", length(categories) - 1))
+  result_df <- result_df[, c("Variable", "Category", "2012", "2014", "2016", "2018")]
+  return(result_df)
+}
+
+# --- 2. Define ALL labels (Old and New) ---
+sex_labels <- c("Male", "Female")
+age_labels <- c("16-24", "25-34", "35-44", "45-54", "55-64", "65+")
+income_labels <- c("Low income", "High income")
+religion_labels <- c("Christian", "Other religion", "No religion")
+urban_labels <- c("Urban", "Rural")
+children_labels <- c("Yes", "No")
+responsability_labels <- c("All/Most", "Sometimes/Never")
+country_labels <- c("England", "Wales", "Northern Ireland")
+eatsafe_group_labels <- c("High", "Low")
+infoseeking_labels <- c("1", "0")
+sandwich_labels <- c("Never", "Monthly", "Weekly")
+meat_labels <- c("Never", "Monthly", "Weekly")
+# --- NEW LABELS ---
+diary_labels <- c("Never", "Monthly", "Weekly")
+fresh_meat_labels <- c("Never", "Monthly", "Weekly")
+
+
+# --- 3. Run the function for all variables ---
+age_mean_se_table <- create_weighted_mean_se_table("age", age_labels)
+income_mean_se_table <- create_weighted_mean_se_table("hhdinc_group", income_labels)
+religion_mean_se_table <- create_weighted_mean_se_table("Religion_DV", religion_labels)
+urban_mean_se_table <- create_weighted_mean_se_table("UrbanRuralInd", urban_labels)
+children_mean_se_table <- create_weighted_mean_se_table("below16", children_labels)
+responsability_mean_se_table <- create_weighted_mean_se_table("Q3_1", responsability_labels)
+country_mean_se_table <- create_weighted_mean_se_table("Country_DV", country_labels)
+eatsafe_group_mean_se_table <- create_weighted_mean_se_table("eatsafe_group", eatsafe_group_labels)
+infoseeking_mean_se_table <- create_weighted_mean_se_table("Q11_8b25", infoseeking_labels)
+sex_mean_se_table <- create_weighted_mean_se_table("RespSex", sex_labels)
+
+# Product variables (Old)
+sandwich_mean_se_table <- create_weighted_mean_se_table("consumption_sandwich", sandwich_labels)
+meat_mean_se_table <- create_weighted_mean_se_table("consumption_precookedmeat", meat_labels)
+
+# --- NEW PRODUCT CALLS ---
+diary_mean_se_table <- create_weighted_mean_se_table("consumption_diary", diary_labels)
+fresh_meat_mean_se_table <- create_weighted_mean_se_table("consumption_meat", fresh_meat_labels)
+
+
+# --- 4. Combine all tables ---
+demo_mean_se_table <- rbind(
+  sex_mean_se_table,
+  age_mean_se_table,
+  income_mean_se_table,
+  religion_mean_se_table,
+  urban_mean_se_table,
+  children_mean_se_table,
+  responsability_mean_se_table,
+  country_mean_se_table,
+  eatsafe_group_mean_se_table,
+  infoseeking_mean_se_table,
+  sandwich_mean_se_table,
+  meat_mean_se_table,
+  # --- ADDED NEW TABLES ---
+  diary_mean_se_table,
+  fresh_meat_mean_se_table
+)
+
+# Show the full table
+print("Full weighted mean (SE) table (for Figure 3 data):")
+print(demo_mean_se_table)
+
+# --- 5. Create LaTeX table ---
+latex_table_mean_se <- xtable(demo_mean_se_table, 
+                              caption = 'Weighted Mean (Standard Error) of Q6_4 (Readability) by Characteristics, Product, and Survey Year', 
+                              label = 'tab:demographics_mean_se')
+
+# Print LaTeX code
+print("LaTeX table code:")
+print(latex_table_mean_se, type = "latex", booktabs = TRUE, include.rownames = FALSE)
+
+```
+## Data quality check: Food and You and National Diet and Nutrition Survey NDNS
+
+I have analized and created the data set for NDNS. I have focused on reaty-to-eat meals. I calculated the prevalence of reporting these products from 2012 to 2018 by each individual from the data foodleveldietarydata. Then I integrate this calculation in the data set that contain individual details, including survey wrights, strata and psu. I recalculated the survey weight filtering the data only for adults 16+ and for years 2012-2018. I include the svy code to get a table/plot weighted for my publication.
+
+```{r table22, echo=FALSE}
+
+#National Diet and Nutrition Survey NDNS
+#calculating sum of ready to meal for each individual
+# Define the list of ready-to-meat product categories
+ready_meal_categories <- c(
+  "MANUFACTURED BEEF PRODUCTS INCLUDING READY MEALS",
+  "MANUFACTURED CANNED TUNA PRODUCTS INCL READY MEALS", 
+  "MANUFACTURED CHICKEN PRODUCTS INCL READY MEALS",
+  "MANUFACTURED COATED CHICKEN / TURKEY PRODUCTS",
+  "MANUFACTURED EGG PRODUCTS INCLUDING READY MEALS",
+  "MANUFACTURED LAMB PRODUCTS INCLUDING READY MEALS",
+  "MANUFACTURED MEAT PIES AND PASTRIES",
+  "MANUFACTURED OILY FISH PRODUCTS INCL READY MEALS",
+  "MANUFACTURED PORK PRODUCTS INCLUDING READY MEALS",
+  "MANUFACTURED SHELLFISH PRODUCTS INCL READY MEALS",
+  "MANUFACTURED WHITE FISH PRODUCTS INCL READY MEALS",
+  "MEAT ALTERNATIVES INCL READY MEALS & HOMEMADE DISH",
+  "OTHER MEAT PRODUCTS MANUFACTURED  INCL READY MEALS",
+  "OTHER MEAT PRODUCTS MANUFACTURED INCL READY MEALS",
+  "READY MEALS BASED ON SAUSAGES"
+)
+
+# Filter to only ready meal records
+ready_meal_data5_6 <- ndns_data5_6[ndns_data5_6$SubFoodGroupDesc %in% ready_meal_categories, ]
+
+# For each individual, sum the number of ready meal records
+ready_meal_sum_ind5_6 <- aggregate(
+  x = list(ready_meal_count5_6 = ready_meal_data5_6$SubFoodGroupDesc),
+  by = list(seriali = ready_meal_data5_6$seriali),
+  FUN = length
+)
+
+
+# Filter to only ready meal records
+ready_meal_data7_8 <- ndns_data7_8[ndns_data7_8$SubFoodGroupDesc %in% ready_meal_categories, ]
+
+# For each individual, sum the number of ready meal records
+ready_meal_sum_ind7_8 <- aggregate(
+  x = list(ready_meal_count7_8 = ready_meal_data7_8$SubFoodGroupDesc),
+  by = list(seriali = ready_meal_data7_8$seriali),
+  FUN = length
+)
+
+# Filter to only ready meal records
+ready_meal_data9 <- ndns_data9[ndns_data9$SubFoodGroupDesc %in% ready_meal_categories, ]
+
+# For each individual, sum the number of ready meal records
+ready_meal_sum_ind9 <- aggregate(
+  x = list(ready_meal_count9 = ready_meal_data9$SubFoodGroupDesc),
+  by = list(seriali = ready_meal_data9$seriali),
+  FUN = length
+)
+
+# Filter to only ready meal records
+ready_meal_data10 <- ndns_data10[ndns_data10$SubFoodGroupDesc %in% ready_meal_categories, ]
+
+# For each individual, sum the number of ready meal records
+ready_meal_sum_ind10 <- aggregate(
+  x = list(ready_meal_count10 = ready_meal_data10$SubFoodGroupDesc),
+  by = list(seriali = ready_meal_data10$seriali),
+  FUN = length
+)
+
+# Filter to only ready meal records
+ready_meal_data11 <- ndns_data11[ndns_data11$SubFoodGroupDesc %in% ready_meal_categories, ]
+
+# For each individual, sum the number of ready meal records
+ready_meal_sum_ind11 <- aggregate(
+  x = list(ready_meal_count11 = ready_meal_data11$SubFoodGroupDesc),
+  by = list(seriali = ready_meal_data11$seriali),
+  FUN = length
+)
+
+colnames(ready_meal_sum_ind9) <- c("seriali", "ready_meal_count")  
+colnames(ready_meal_sum_ind10) <- c("seriali", "ready_meal_count")  
+colnames(ready_meal_sum_ind11) <- c("seriali", "ready_meal_count")  
+
+# Merge vertically (row bind)  
+ready_meal_sum_ind9_11 <- rbind(ready_meal_sum_ind9, ready_meal_sum_ind10, ready_meal_sum_ind11)  
+  
+# Show the first few rows of the merged dataset  
+print(head(ready_meal_sum_ind9_11)) 
+
+#####################
+#joining the data sets
+
+# Use left join to keep all participants in ndns_5_6, even those without ready meals
+ndns_dataind5_6 <- merge(ndns_dataind5_6, ready_meal_sum_ind5_6, by = "seriali", all.x = TRUE)
+ndns_dataind7_8 <- merge(ndns_dataind7_8, ready_meal_sum_ind7_8, by = "seriali", all.x = TRUE)
+ndns_dataind9_11 <- merge(ndns_dataind9_11, ready_meal_sum_ind9_11, by = "seriali", all.x = TRUE)
+table(ndns_dataind5_6$ready_meal_count5_6, ndns_dataind5_6$surveyyr)
+table(ndns_dataind7_8$ready_meal_count7_8, ndns_dataind7_8$surveyyr)
+
+#subsets
+#For example, if you are analysing the whole sample then astrata1 will be fine. But let’s say you’re analysing a subgroup e.g. aged 65+ then using astrata 1 will probably result in a number of single PSU strata. If there are a handful you can recode them appropriately (group them with adjacent strata within region) but if there are more than a few then you can try using astrata 2 instead. If there are still too many single PSU strata to recode then you would try astrata 3 and so on. I SELECT STRATA 5
+#AREA is PSU
+ndns_dataind5_6filter <- subset(ndns_dataind5_6, select = c("seriali", "SurveyYear", "age", "area", "astrata5", "wti_Y56", "ready_meal_count5_6"))
+ndns_dataind7_8filter<- subset(ndns_dataind7_8, select = c("seriali", "surveyyr","age","area", "astrata5", "wti_Y78","ready_meal_count7_8"))
+ndns_dataind9_11filter <- subset(ndns_dataind9_11, select = c("seriali", "surveyyr","AgeR","Area", "astrata5", "wti_Y911","ready_meal_count"))
+
+colnames(ndns_dataind5_6filter) <- c("seriali", "SurveyYear", "age", "area", "astrata5", "wti","ready_meal_count")  
+colnames(ndns_dataind7_8filter) <- c("seriali", "SurveyYear", "age", "area", "astrata5", "wti","ready_meal_count")  
+colnames(ndns_dataind9_11filter) <- c("seriali", "SurveyYear", "age", "area", "astrata5", "wti","ready_meal_count")  
+
+# Merge vertically (row bind)  
+ndns_dataindtotal <- rbind(ndns_dataind5_6filter, ndns_dataind7_8filter, ndns_dataind9_11filter) 
+# Export the data frame to an Excel file
+write_xlsx(ndns_dataindtotal, path = "ndns_dataindtotal.xlsx")
+
+# Step 1: Filter for participants aged 16 
+ndns_dataindtotal_16 <- ndns_dataindtotal[ndns_dataindtotal$age >= 16,]
+# Calculate the sum of weights for each survey group
+sum_wti_56 <- sum(ndns_dataindtotal_16$wti[ndns_dataindtotal_16$SurveyYear %in% c(5,6)], na.rm=TRUE)
+sum_wti_78 <- sum(ndns_dataindtotal_16$wti[ndns_dataindtotal_16$SurveyYear %in% c(7,8)], na.rm=TRUE)
+sum_wti_911 <- sum(ndns_dataindtotal_16$wti[ndns_dataindtotal_16$SurveyYear %in% c(9,10,11)], na.rm=TRUE)
+total_sum_wti <- sum(ndns_dataindtotal_16$wti, na.rm=TRUE)
+
+
+# Step 3: Calculate the rescaled weights for each group
+# Initialize the new weight variable
+ndns_dataindtotal_16$wti_rescaled <- 0
+# For Years 5 & 6: multiply by 2/11
+ndns_dataindtotal_16$wti_rescaled[ndns_dataindtotal_16$SurveyYear %in% c(5,6)] <- 
+  ndns_dataindtotal_16$wti[ndns_dataindtotal_16$SurveyYear %in% c(5,6)] * total_sum_wti / sum_wti_56 * (2/11)
+
+# For Years 7 & 8: multiply by 2/11
+ndns_dataindtotal_16$wti_rescaled[ndns_dataindtotal_16$SurveyYear %in% c(7,8)] <- 
+  ndns_dataindtotal_16$wti[ndns_dataindtotal_16$SurveyYear %in% c(7,8)] * total_sum_wti / sum_wti_78 * (2/11)
+
+# For Years 9, 10 & 11: multiply by 3/11
+ndns_dataindtotal_16$wti_rescaled[ndns_dataindtotal_16$SurveyYear %in% c(9,10,11)] <- 
+  ndns_dataindtotal_16$wti[ndns_dataindtotal_16$SurveyYear %in% c(9,10,11)] * total_sum_wti / sum_wti_911 * (3/11)
+
+# Step 4: Re-scale the weights to have a mean of 1
+mean_rescaled_weight <- mean(ndns_dataindtotal_16$wti_rescaled, na.rm=TRUE)
+ndns_dataindtotal_16$wti_final <- ndns_dataindtotal_16$wti_rescaled / mean_rescaled_weight
+write_xlsx(ndns_dataindtotal_16, path = "ndns_dataindtotal_16.xlsx") #average =1
+
+########## Survey desing
+
+options(survey.lonely.psu = "adjust") #specify how variance estimation will be handled in cases where a stratum contains only one PSU
+options(survey.adjust.domain.lonely = TRUE) # specify how variance estimation will be handled in cases where a stratum contains only one PSU. These options “center the stratum at the population mean rather than the stratum mean” and make the same adjustment within subgroup analyses
+
+survey_design2 <- svydesign(  
+    id = ~area,  
+    strata = ~astrata5,  
+    weights = ~wti_final,  
+    data = ndns_dataindtotal_16,  
+    nest = TRUE  
+) 
+
+#information of clusters and stratas
+survey_design2
+
+# Weighted barplot
+mybar2 <- svytable(~factor(ready_meal_count), survey_design2, Ntotal=1)
+barplot(mybar2,
+        ylab = "Proportion", xlab = "Ready meal",
+        main = "Weighted", cex.names = 0.65)
+
+
+# Calculate the weighted prevalence (number and proportion) of ready-to-eat meals by year
+# We'll treat ready_meal_count > 0 as having consumed a ready meal
+ndns_dataindtotal_16$ready_meal_any <- ifelse(is.na(ndns_dataindtotal_16$ready_meal_count), 0, ifelse(ndns_dataindtotal_16$ready_meal_count > 0, 1, 0))
+
+# Update the survey design to include this new variable
+design2 <- update(survey_design2, ready_meal_any = ndns_dataindtotal_16$ready_meal_any)
+
+# Calculate weighted prevalence (number and proportion) by year
+# Proportion
+prop_by_year <- svyby(~ready_meal_any, ~SurveyYear, design2, svymean, na.rm=TRUE)
+# Number (weighted count)
+count_by_year <- svyby(~ready_meal_any, ~SurveyYear, design2, svytotal, na.rm=TRUE)
+
+print("Weighted proportion of adults consuming ready meals by year:")
+print(prop_by_year)
+
+print("Weighted number of adults consuming ready meals by year:")
+print(count_by_year)
+
+# Calculate total weighted count of all individuals by year (not just ready meal consumers)
+total_count_by_year <- svyby(~I(rep(1, length(ready_meal_any))), ~SurveyYear, design2, svytotal, na.rm=TRUE)
+
+
+print("Weighted total number of adults (all individuals) by year:")
+print(total_count_by_year)
+
+
+#### Merging data sets
+
+# Create the comprehensive table as requested
+# First, create the NDNS data with all years and SE values
+ndns_complete <- data.frame(
+  SurveyYear = c(5, 6, 7, 8, 9, 10, 11),
+  Years = c(2012, 2013, 2014, 2015, 2016, 2017, 2018),
+  Prevalence_NDNS = c(0.6671244, 0.6299603, 0.6125167, 0.6271443, 0.666476, 0.6633179, 0.7005119),
+  SE_NDNS = c(0.02180248, 0.02270312, 0.02312585, 0.02123973, 0.02265036, 0.02273316, 0.02199741)
+)
+
+# Create Food & You data for the specific years (2012, 2014, 2016, 2018)
+food_you_data <- data.frame(
+  Years = c(2012, 2014, 2016, 2018),
+  Weekly_Sandwich = c(50.1, 50.0, 46.6, 37.9),
+  Monthly_Sandwich = c(32.4, 31.2, 36.0, 42.0),
+  Never_Sandwich = c(17.4, 18.9, 17.4, 20.1),
+  Weekly_Precooked = c(16.2, 17.1, 19.8, 20.8),
+  Monthly_Precooked = c(17.9, 19.0, 25.4, 28.8),
+  Never_Precooked = c(65.9, 63.8, 54.9, 50.5)
+)
+
+# Merge the datasets
+comprehensive_table <- merge(ndns_complete, food_you_data, by = "Years", all.x = TRUE)
+
+# Reorder columns to match the requested format
+comprehensive_table <- comprehensive_table[, c("SurveyYear", "Years", "Prevalence_NDNS", "SE_NDNS", 
+                                               "Weekly_Sandwich", "Monthly_Sandwich", "Never_Sandwich",
+                                               "Weekly_Precooked", "Monthly_Precooked", "Never_Precooked")]
+
+# Rename columns to match the exact format requested
+colnames(comprehensive_table) <- c("SurveyYear", "Years", "Prevalence NDNS", "SE NDNS", 
+                                   "Weekly Sand", "Monthly Sand", "Never sand",
+                                   "Weekly Cmeat", "Monthly Cmeat", "Never Cmeat")
+
+print('Comprehensive table:')
+print(comprehensive_table)
+
+# Save to file
+write.csv(comprehensive_table, "comprehensive_consumption_table.csv", row.names = FALSE)
+print('Table saved to comprehensive_consumption_table.csv')
+
+# Convert to long format for plotting
+library(tidyr)
+plot_data_long <- comprehensive_table %>%
+  pivot_longer(cols = c("Prevalence NDNS", "Weekly Sand", "Monthly Sand", "Never sand"), 
+               names_to = "Category", values_to = "Percentage")
+
+# Create the plot
+p <- ggplot(plot_data_long, aes(x = Years, y = Percentage, color = Category)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3) +
+  labs(title = 'NDNS Ready Meal Prevalence vs Sandwich Consumption (2012-2018)',
+       y = 'Percentage (%)', 
+       x = 'Year',
+       color = 'Category') +
+  theme_minimal() +
+  scale_x_continuous(breaks = c(2012, 2014, 2016, 2018)) +
+  scale_color_manual(values = c(
+    'NDNS_Prevalence' = '#e41a1c',
+    'Weekly_Sand' = '#377eb8',
+    'Monthly_Sand' = '#4daf4a',
+    'Never_Sand' = '#984ea3'
+  ),
+  labels = c(
+    'NDNS_Prevalence' = 'NDNS Ready Meal Prevalence',
+    'Weekly_Sand' = 'Sandwich - Weekly',
+    'Monthly_Sand' = 'Sandwich - Monthly',
+    'Never_Sand' = 'Sandwich - Never'
+  )) +
+  theme(legend.position = "bottom",
+        legend.title = element_text(size = 10),
+        legend.text = element_text(size = 9)) +
+  ylim(0, 80)
+
+print(p)
+
+
+
+```
+
+## Readability mean table weighted PLOT
+
+
+```{r table22, echo=FALSE}
+
+# Load required libraries
+library(tidyverse)
+library(patchwork)
+
+# Create the dataframe using tribble, now updated with the new table values
+readability_data <- tribble(
+  ~Variable, ~Category, ~Year, ~Mean, ~SD,
+  # Age - Using three representative groups from your table
+  "Age", "16-24", 2012, 3.91, 0.12,
+  "Age", "16-24", 2014, 4.03, 0.11,
+  "Age", "16-24", 2016, 3.90, 0.14,
+  "Age", "16-24", 2018, 4.23, 0.12,
+  "Age", "45-54", 2012, 2.88, 0.07,
+  "Age", "45-54", 2014, 2.91, 0.07,
+  "Age", "45-54", 2016, 2.85, 0.06,
+  "Age", "45-54", 2018, 2.58, 0.05,
+  "Age", "65+",   2012, 3.11, 0.08,
+  "Age", "65+",   2014, 3.21, 0.07,
+  "Age", "65+",   2016, 3.16, 0.08,
+  "Age", "65+",   2018, 3.18, 0.09,
+  # Income (from hhdinc_group)
+  "Income", "Low income", 2012, 3.30, 0.06,
+  "Income", "Low income", 2014, 3.31, 0.05,
+  "Income", "Low income", 2016, 3.20, 0.07,
+  "Income", "Low income", 2018, 3.13, 0.06,
+  "Income", "High income", 2012, 3.59, 0.05,
+  "Income", "High income", 2014, 3.55, 0.05,
+  "Income", "High income", 2016, 3.51, 0.05,
+  "Income", "High income", 2018, 3.53, 0.05,
+  # Religion (from Religion_DV)
+  "Religion", "Christian", 2012, 3.67, 0.07,
+  "Religion", "Christian", 2014, 3.68, 0.05,
+  "Religion", "Christian", 2016, 3.51, 0.06,
+  "Religion", "Christian", 2018, 3.71, 0.06,
+  "Religion", "Other religion", 2012, 3.35, 0.05,
+  "Religion", "Other religion", 2014, 3.33, 0.05,
+  "Religion", "Other religion", 2016, 3.31, 0.05,
+  "Religion", "Other religion", 2018, 3.11, 0.05,
+  "Religion", "No religion", 2012, 3.60, 0.16,
+  "Religion", "No religion", 2014, 3.33, 0.21,
+  "Religion", "No religion", 2016, 3.54, 0.16,
+  "Religion", "No religion", 2018, 3.67, 0.15,
+  # Area (from UrbanRuralInd)
+  "Area", "Urban", 2012, 3.50, 0.04,
+  "Area", "Urban", 2014, 3.47, 0.04,
+  "Area", "Urban", 2016, 3.41, 0.05,
+  "Area", "Urban", 2018, 3.46, 0.05,
+  "Area", "Rural", 2012, 3.21, 0.12,
+  "Area", "Rural", 2014, 3.32, 0.10,
+  "Area", "Rural", 2016, 3.32, 0.08,
+  "Area", "Rural", 2018, 3.17, 0.09,
+  # Children under 16 (from below16)
+  "Children under 16", "Yes", 2012, 3.35, 0.05,
+  "Children under 16", "Yes", 2014, 3.31, 0.05,
+  "Children under 16", "Yes", 2016, 3.24, 0.05,
+  "Children under 16", "Yes", 2018, 3.23, 0.05,
+  "Children under 16", "No", 2012, 3.75, 0.07,
+  "Children under 16", "No", 2014, 3.78, 0.06,
+  "Children under 16", "No", 2016, 3.75, 0.06,
+  "Children under 16", "No", 2018, 3.75, 0.07,
+  # Shopping responsibilities (from Q3_1)
+  "Shopping responsibilities", "All/Most", 2012, 3.38, 0.05,
+  "Shopping responsibilities", "All/Most", 2014, 3.40, 0.04,
+  "Shopping responsibilities", "All/Most", 2016, 3.37, 0.05,
+  "Shopping responsibilities", "All/Most", 2018, 3.31, 0.05,
+  "Shopping responsibilities", "Sometimes/Never", 2012, 3.55, 0.06,
+  "Shopping responsibilities", "Sometimes/Never", 2014, 3.51, 0.05,
+  "Shopping responsibilities", "Sometimes/Never", 2016, 3.42, 0.06,
+  "Shopping responsibilities", "Sometimes/Never", 2018, 3.48, 0.06,
+  # Concerns about safe eating (from eatsafe_group)
+  "Concerns about safe eating", "High", 2012, 3.46, 0.05,
+  "Concerns about safe eating", "High", 2014, 3.46, 0.04,
+  "Concerns about safe eating", "High", 2016, 3.45, 0.04,
+  "Concerns about safe eating", "High", 2018, 3.38, 0.05,
+  "Concerns about safe eating", "Low", 2012, 3.46, 0.08,
+  "Concerns about safe eating", "Low", 2014, 3.45, 0.09,
+  "Concerns about safe eating", "Low", 2016, 3.18, 0.10,
+  "Concerns about safe eating", "Low", 2018, 3.43, 0.08,
+  # Information seeking (from Q11_8b25)
+  "Information seeking", "Yes", 2012, 3.33, 0.09, # Assuming 1 is Yes
+  "Information seeking", "Yes", 2014, 3.19, 0.09,
+  "Information seeking", "Yes", 2016, 3.09, 0.09,
+  "Information seeking", "Yes", 2018, 3.21, 0.09,
+  "Information seeking", "No", 2012, 3.50, 0.05, # Assuming 0 is No
+  "Information seeking", "No", 2014, 3.50, 0.04,
+  "Information seeking", "No", 2016, 3.46, 0.04,
+  "Information seeking", "No", 2018, 3.44, 0.05,
+  # Sandwich Consumption
+  "Pre-package Sandwich", "Never", 2012, 3.78, 0.09,
+  "Pre-package Sandwich", "Never", 2014, 3.75, 0.09,
+  "Pre-package Sandwich", "Never", 2016, 3.64, 0.09,
+  "Pre-package Sandwich", "Never", 2018, 3.66, 0.09,
+  "Pre-package Sandwich", "Monthly", 2012, 3.59, 0.06,
+  "Pre-package Sandwich", "Monthly", 2014, 3.46, 0.06,
+  "Pre-package Sandwich", "Monthly", 2016, 3.45, 0.06,
+  "Pre-package Sandwich", "Monthly", 2018, 3.36, 0.06,
+  "Pre-package Sandwich", "Weekly", 2012, 3.27, 0.06,
+  "Pre-package Sandwich", "Weekly", 2014, 3.34, 0.05,
+  "Pre-package Sandwich", "Weekly", 2016, 3.25, 0.05,
+  "Pre-package Sandwich", "Weekly", 2018, 3.28, 0.07,
+  # Pre-cooked Meat Consumption
+  "Pre-cooked Meat", "Never", 2012, 3.45, 0.05,
+  "Pre-cooked Meat", "Never", 2014, 3.46, 0.05,
+  "Pre-cooked Meat", "Never", 2016, 3.44, 0.05,
+  "Pre-cooked Meat", "Never", 2018, 3.38, 0.05,
+  "Pre-cooked Meat", "Monthly", 2012, 3.63, 0.09,
+  "Pre-cooked Meat", "Monthly", 2014, 3.48, 0.08,
+  "Pre-cooked Meat", "Monthly", 2016, 3.36, 0.09,
+  "Pre-cooked Meat", "Monthly", 2018, 3.45, 0.09,
+  "Pre-cooked Meat", "Weekly", 2012, 3.36, 0.08,
+  "Pre-cooked Meat", "Weekly", 2014, 3.42, 0.08,
+  "Pre-cooked Meat", "Weekly", 2016, 3.33, 0.07,
+  "Pre-cooked Meat", "Weekly", 2018, 3.37, 0.07,
+  
+  # --- NEW DATA ADDED BELOW ---
+  
+  # Diary Consumption (from consumption_diary)
+  "Diary", "Never", 2012, 3.47, 0.04,
+  "Diary", "Never", 2014, 3.46, 0.04,
+  "Diary", "Never", 2016, 3.40, 0.04,
+  "Diary", "Never", 2018, 3.39, 0.04,
+  "Diary", "Monthly", 2012, 3.44, 0.29,
+  "Diary", "Monthly", 2014, 3.55, 0.27,
+  "Diary", "Monthly", 2016, 3.22, 0.30,
+  "Diary", "Monthly", 2018, 3.53, 0.19,
+  "Diary", "Weekly", 2012, 3.30, 0.29,
+  "Diary", "Weekly", 2014, 3.00, 0.23,
+  "Diary", "Weekly", 2016, 3.20, 0.25,
+  "Diary", "Weekly", 2018, 3.36, 0.19,
+  # Fresh Meat Consumption (from consumption_meat)
+  "Fresh Meat", "Never", 2012, 3.47, 0.09,
+  "Fresh Meat", "Never", 2014, 3.47, 0.07,
+  "Fresh Meat", "Never", 2016, 3.44, 0.07,
+  "Fresh Meat", "Never", 2018, 3.37, 0.06,
+  "Fresh Meat", "Monthly", 2012, 3.44, 0.05,
+  "Fresh Meat", "Monthly", 2014, 3.47, 0.05,
+  "Fresh Meat", "Monthly", 2016, 3.38, 0.05,
+  "Fresh Meat", "Monthly", 2018, 3.35, 0.05,
+  "Fresh Meat", "Weekly", 2012, 3.73, 0.14,
+  "Fresh Meat", "Weekly", 2014, 3.30, 0.13,
+  "Fresh Meat", "Weekly", 2016, 3.37, 0.10,
+  "Fresh Meat", "Weekly", 2018, 3.65, 0.11
+)
+
+# --- UPDATED AND MORE ROBUST PLOTTING LOGIC ---
+
+# Define the desired 5x3 plot order
+final_plot_order <- c("Age", "Income", "Religion", 
+                      "Children under 16", "Area", "Country", 
+                      "Shopping responsibilities", "Concerns about safe eating", "Information seeking",
+                      "Pre-package Sandwich", "Pre-cooked Meat", "Diary", 
+                      "Fresh Meat") # Added new products, 13 total
+
+# Generate plots in the correct order from the start
+plot_list_ordered <- readability_data %>%
+  # Convert Variable to a factor with the desired order to ensure correct sequencing
+  mutate(Variable = factor(Variable, levels = final_plot_order)) %>%
+  # Group by this new factor
+  group_by(Variable) %>%
+  # Create a list of data frames, which will be in the correct order
+  group_split() %>%
+  # Use map to iterate over the ordered list of data frames and create a plot for each
+  purrr::map(~ ggplot(.x, aes(Year, Mean, colour = Category, group = Category)) +
+        geom_line(linewidth = 1) +
+        geom_point(size = 2) +
+        geom_errorbar(aes(ymin = Mean - SD, ymax = Mean + SD), width = 0.2) +
+        scale_x_continuous(breaks = c(2012, 2014, 2016, 2018)) +
+        scale_y_continuous(limits = c(2.5, 4.5)) +
+        scale_colour_grey(start = 0.2, end = 0.7) +
+        theme_minimal(base_size = 14) +
+        theme(legend.position = "bottom", legend.title = element_blank()) +
+        # Use the first value of the Variable column as the title for each plot
+        labs(title = first(.x$Variable), x = "Year", y = "Mean (± SD)")
+  )
+
+# Combine the 13 ordered plots into one 5x3 multi-panel figure
+combined_plot <- wrap_plots(plot_list_ordered, ncol = 3, nrow = 5) + # MODIFIED: nrow = 5
+  plot_annotation(
+    title = "",
+    # Add a theme to control the main title's appearance
+    theme = theme(plot.title = element_text(size = 22, face = "bold"))
+  )
+
+# Print the final combined plot
+print(combined_plot)
+
+# Save the final plot to a file ----------------------------------------------------
+# MODIFIED: Increased height to accommodate the extra row of plots
+ggsave("readability_5x3_grid.png",
+       plot = combined_plot,
+       width = 12, height = 16, dpi = 300, bg = "white") # MODIFIED: height = 16
+
+cat("Exported readability_5x3_grid.png\n")
+
+
+```
+
+## Ordinal logistic regression FSA df_full 2012-2018 -  no proportional odds weighted Sandwich and precooked meat + readability proportional odd - REVERSE CAUSALITY
+
+```{r reverse, echo=FALSE}
+
+gen22r <- svy_vglm(
+  Q6_4  ~ consumption_sandwich*factor(surveyyear) + RespSex + age + factor(Religion_DV) + hhdinc_group + UrbanRuralInd + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV),
+  family = cumulative(parallel = ~  consumption_sandwich + factor(Religion_DV) + hhdinc_group + below16 + marstat2 + factor(Country_DV) + consumption_sandwich*factor(surveyyear)),
+  design = survey_design.nomiss)
+
+summary(gen22r)
+
+gen44 <- svy_vglm(
+  Q6_4 ~ consumption_precookedmeat*factor(surveyyear) + RespSex + age + factor(Religion_DV) + hhdinc_group + UrbanRuralInd + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV),
+  family = cumulative(parallel = ~ consumption_precookedmeat + RespSex + age + factor(Religion_DV) + UrbanRuralInd + below16 + marstat2 + Q3_1 + factor(Country_DV) + consumption_precookedmeat*factor(surveyyear)),
+  design = survey_design.nomiss
+)
+
+summary(gen44)
+
+
+```
+
+## Logistic regression FSA df_full 2012-2018 -  no proportional odds weighted Sandwich and precooked meat
+
+```{r reverse, echo=FALSE}
+
+# Logistic regression for sandwich consumption
+gen22r_logistic <- svyglm(
+  consumption_sandwich_binary ~ Q6_4 * factor(surveyyear) + RespSex + age + factor(Religion_DV) + hhdinc_group + UrbanRuralInd + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV),
+  family = binomial(link = "logit"),
+  design = survey_design.nomiss)
+
+summary(gen22r_logistic)
+
+# Logistic regression for pre-cooked meat consumption
+gen44_logistic <- svyglm(
+  consumption_precookedmeat_binary ~ Q6_4 * factor(surveyyear) + RespSex + age + factor(Religion_DV) + hhdinc_group + UrbanRuralInd + below16 + bhhsize + marstat2 + Q3_1 + factor(Country_DV),
+  family = binomial(link = "logit"),
+  design = survey_design.nomiss)
+
+summary(gen44_logistic)
+
+
+```
+
+
+
