@@ -1,41 +1,53 @@
-# Food Label Readability: Cross-sectional Analysis
-[![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
+# 🏷️ Food Label Readability: Cross-Sectional Analysis
 
-The scope of this repository is to provide the data and statistical models used to examine cross-sectional relationships between perceived multiple traffic light (MTL) legibility and self-reported processed food consumption frequency in the UK.
+[![Language](https://img.shields.io/badge/Language-R-276DC3.svg)](https://www.r-project.org/)
+[![Dataset](https://img.shields.io/badge/Dataset-Food_&_You_Survey-blue.svg)](#)
+[![Models](https://img.shields.io/badge/Models-Ordinal_Logistic_Regression-lightgrey.svg)](#)
+[![Status](https://img.shields.io/badge/Status-Published-success.svg)](#)
 
-Conceptually, the analysis is driven by data from the **Food and You Survey 2010-2018** and is split into the following methodological components:
-1. **Survey Weight Adjustment and Imputation**
-2. **Multicollinearity Checks (VIF tests)**
-3. **Ordinal Logistic Regression Modeling**
-4. **Brant Test (Proportional Odds Assumption Validation)**
+> **Executive Summary:** This repository provides the data and deep statistical modeling used to examine the cross-sectional relationships between perceived multiple traffic light (MTL) legibility and self-reported processed food consumption frequency within the UK.
 
-## Repository Structure
+## 🌍 Why This Matters
+* **Nutritional Policy Making:** Validates whether the readability of front-of-pack labels (like the MTL system) actually correlates with healthier consumer dietary patterns.
+* **Health Equity:** Evaluates complex stratifications across demographics, addressing whether label readability caters equally to varying levels of household income and education.
+* **Large-Scale Validation:** Utilizes massive multi-year survey datasets to draw broader, national-level dietary conclusions rather than localized experiments.
 
-The current version of this repository contains:
-- `Food label readability 14052025 - V7 Ordinal Logistics Regression + Weights - editorscomments.Rmd`: The main analysis script detailing the full methodological pipeline.
-- `foodandyou-w1_5combined_FSA_Correctedseeking (1).csv`: The combined Food and You Survey dataset.
-- `nutrients-18-00197-v2.pdf`: The published academic paper.
+## 📊 Dataset
+The analysis is driven by robust, multi-wave multi-year data. 
+- **Source:** Food and You Survey 2010-2018 (Waves 1-5).
+- **Features:** Label Readability scale, pre-cooked meat consumption, sandwich consumption, dairy intake, and extensive demographic control variables.
+- **Data File:** `foodandyou_survey_data.csv`
 
-## Setup R Environment
+## 🔬 Methodology Pipeline
 
-Before running the analysis code, please set up an R environment capable of processing complex variance structures and ordinal models. 
+`Survey Weight Adjustments` ➔ `Variable Imputation & Recoding` ➔ `Multicollinearity Validation (VIF)` ➔ `Proportional Odds Checks (Brant)` ➔ `Ordinal Logistic Regression`
 
-### Installing Dependencies
+## 🤖 Models & Analysis Benchmarked
+| Analytical Method | Purpose in Study |
+| :--- | :--- |
+| **Variance Inflation Factor (VIF)** | To detect and remove severe multicollinearity among the demographic and consumption predictors. |
+| **Brant Test** | To definitively validate the proportional odds assumption (parallel regression) necessary for ordinal models across waves. |
+| **Ordinal Logistic Regression** | The core model used to calculate the log-odds and marginal effects of readability on food frequency. |
 
-Open R or RStudio and run:
+## 🚀 How to Run Locally
 
-```r
+### 1. Prerequisites
+Ensure you have **R or RStudio** alongside a suite of statistical modeling packages:
+```R
 install.packages(c("tidyverse", "plm", "car", "gplots", "tseries", "lmtest", "readr", "texreg", "ordinal", "VGAM", "survey", "foreign", "MASS", "Hmisc", "reshape2", "brant", "ggplot2", "patchwork"))
 ```
 
-## Steps for running the models
+### 2. Execution
+1. Clone the repository locally.
+2. Open `label_readability_analysis.Rmd` in your preferred R editor.
+3. Adjust the file paths in the initial `data` code chunk to point to `foodandyou_survey_data.csv` in your cloned directory.
+4. Execute the chunks sequentially, or click **Knit** to dynamically process the complex variance structures and generate the final publication-ready odds-ratio plots.
 
-1. Clone this GitHub repository locally.
-```bash
-git clone https://github.com/constanzaavalos/<Repository_Name>
-cd <Repository_Name>
-```
+## 📁 Project Structure
+The repository is purposefully flat to house the interwoven pipeline:
+* `label_readability_analysis.Rmd` — The main analysis script detailing the full methodological pipeline.
+* `foodandyou_survey_data.csv` — The combined mult-wave survey baseline data.
+* `published_paper.pdf` — The officially published academic paper.
 
-2. Open the `.Rmd` file in RStudio or your preferred code editor.
-3. Adjust the file paths in the `data` code chunk to correctly point to the downloaded CSV file in your local directory.
-4. We recommend executing chunks sequentially from start to finish, or clicking `Knit` in RStudio, to accurately replicate the descriptive tables and the final ordinal logistic regression plots shown in the paper.
+---
+👤 **Author**: Constanza Avalos-Valdebenito
