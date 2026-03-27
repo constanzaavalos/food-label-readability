@@ -47,7 +47,11 @@ install.packages(c("tidyverse", "plm", "car", "gplots", "tseries", "lmtest", "re
 The repository is purposefully flat to house the interwoven pipeline:
 * `label_readability_analysis.Rmd` — The main analysis script detailing the full methodological pipeline.
 * `foodandyou_survey_data.csv` — The combined mult-wave survey baseline data.
-* `published_paper.pdf` — The officially published academic paper.
+
+## 📄 Citation
+If you use this code or dataset in your research, please cite the original paper:
+
+> Avalos Valdebenito, C., Shryane, N., & Wang, Y. (2026). Food Label Readability and Consumption Frequency: Isolating Content-Specific Effects via a Non-Equivalent Dependent Variable Design. *Nutrients*, *18*(2), 197. https://doi.org/10.3390/nu18020197
 
 ---
 👤 **Author**: Constanza Avalos-Valdebenito
